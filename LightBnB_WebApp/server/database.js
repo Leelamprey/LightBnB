@@ -1,5 +1,6 @@
 const properties = require('./json/properties.json');
 const users = require('./json/users.json');
+const db = require("./db");
 const { Pool } = require('pg');
 const pool = new Pool({
   user: 'vagrant',
@@ -17,22 +18,26 @@ pool.connect()
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
-  const queryString = `
-  SELECT *
-  FROM users
-  WHERE users.email = $1;
-  `
-  return pool.query(queryString, [email])
-    .then(res => {
-      if(res.rows) {
-        return res.rows[0];
-      } else {
-        return null;
-      }
-    })
-    .catch (err => {
-      console.log('query error:', err)
-    });
+  return db
+  .query(
+    `
+  SELECT * FROM users
+  WHERE email = $1;
+`,
+    [email],
+    (res) => { //callback function
+      if (res) return res.rows[0];
+      return null;
+    }
+  )
+  .then((res) => {
+    if (res) {
+      return res;
+    } else {
+      return null;
+    }
+  })
+  .catch((err) => console.error("query error", err.stack));
 };
 exports.getUserWithEmail = getUserWithEmail;
 
@@ -42,20 +47,23 @@ exports.getUserWithEmail = getUserWithEmail;
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithId = function(id) {
-  const queryString = `
-  SELECT * FROM users
-  WHERE users.id = $1
-  `;
-  return pool.query(queryString, [id])
+  return db
+    .query(
+      `
+    SELECT * FROM users
+    WHERE id = $1;
+  `,
+      [id]
+    )
     .then(res => {
-      if (res.rows) {
+      if (res) {
         return res.rows[0];
       } else {
         return null;
       }
     })
-    .catch(err => console.log('query error:', err));
-}
+    .catch(err => console.error("query error", err.stack));
+};
 exports.getUserWithId = getUserWithId;
 
 
@@ -65,20 +73,18 @@ exports.getUserWithId = getUserWithId;
  * @return {Promise<{}>} A promise to the user.
  */
 const addUser =  function(user) {
-  const queryString = `
-  INSERT INTO users (name, email, password)
-  VALUES ($1, $2, $3)
-  RETURNING *;
-  `;
-  const values = [user.name, user.email, user.password];
-  return pool.query(queryString, values)
-    .then(res => {
-      return res.rows[0];
-    })
-    .catch(err => {
-      return console.log('query error:', err);
-    })
-}
+  return db
+    .query(
+      `
+    INSERT INTO users(name, email, password)
+    VALUES($1 ,$2, $3)
+    RETURNING *;
+  `,
+      [user.name, user.email, user.password]
+    )
+    .then((res) => res.rows)
+    .catch((err) => console.error("query error", err.stack));
+};
 exports.addUser = addUser;
 
 /// Reservations
